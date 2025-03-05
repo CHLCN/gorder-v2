@@ -4,14 +4,14 @@ info:
   description: order service
   version: 1.0.0
 servers:
-  - url: "https://{hostname}/api"
+  - url: 'https://{hostname}/api'
     variables:
       hostname:
         default: 127.0.0.1
 paths:
   /customer/{customerID}/orders/{orderID}:
     get:
-      desciption: "get order"
+      desciption: 'get order'
       parameters:
         - in: path
           name: customerID
@@ -26,36 +26,36 @@ paths:
           required: true
 
       responses:
-        "200":
+        '200':
           description: todo
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Order"
+                $ref: '#/components/schemas/Order'
 
         default:
           description: todo
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
 
-  /customer/{customerID}/orders/orders:
+  /customer/{customerID}/orders:
     post:
-      desciption: "create order"
+      desciption: 'create order'
       parameters:
-        -in: path
-        name: customerID
-        schema:
-          type: string
-        required: true
+        - in: path
+          name: customerID
+          schema:
+            type: string
+          required: true
 
       requestBody:
-        required: false
+        required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateOrderRequest"
+              $ref: '#/components/schemas/CreateOrderRequest'
 
       responses:
         "200":
@@ -63,14 +63,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Order"
+                $ref: '#/components/schemas/Order'
 
         default:
           description: todo
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: '#/components/schemas/Error'
 
 components:
   schemas:
@@ -86,7 +86,7 @@ components:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/Item"
+            $ref: '#/components/schemas/Item'
         paymentLink:
           type: string
 
@@ -120,9 +120,9 @@ components:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/ItemWithQuanity"
+            $ref: '#/components/schemas/ItemWithQuantity'
 
-    ItemWithQuanity:
+    ItemWithQuantity:
       type: object
       properties:
         id:
