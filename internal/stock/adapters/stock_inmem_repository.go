@@ -21,7 +21,7 @@ var stub = map[string]*orderpb.Item{
 	},
 }
 
-func NewMemoryOrderRepository() *MemoryStockRepository {
+func NewMemoryStockRepository() *MemoryStockRepository {
 	return &MemoryStockRepository{
 		lock:  &sync.RWMutex{},
 		store: stub,
