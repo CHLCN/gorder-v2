@@ -19,6 +19,24 @@ var stub = map[string]*orderpb.Item{
 		Quantity: 10000,
 		PriceID:  "stub_item_price_id",
 	},
+	"item1": {
+		ID:       "item1",
+		Name:     "stub item 1",
+		Quantity: 10000,
+		PriceID:  "stub_item1_price_id",
+	},
+	"item2": {
+		ID:       "item2",
+		Name:     "stub item 2",
+		Quantity: 10000,
+		PriceID:  "stub_item2_price_id",
+	},
+	"item": {
+		ID:       "item",
+		Name:     "stub item ",
+		Quantity: 10000,
+		PriceID:  "stub_item_price_id",
+	},
 }
 
 func NewMemoryStockRepository() *MemoryStockRepository {
