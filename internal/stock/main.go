@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"github.com/CHLCN/gorder-v2/common/config"
+	"github.com/CHLCN/gorder-v2/common/discovery"
 	"github.com/CHLCN/gorder-v2/common/genproto/stockpb"
 	"github.com/CHLCN/gorder-v2/common/server"
 	"github.com/CHLCN/gorder-v2/stock/ports"
@@ -26,6 +27,15 @@ func main() {
 	defer cancel()
 
 	application := service.NewApplication(ctx)
+
+	deregisterFunc, err := discovery.RegisterToConsul(ctx, serviceName)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	defer func() {
+		_ = deregisterFunc()
+	}()
+
 	switch serverType {
 	case "grpc":
 		server.RunGRPCServer(serviceName, func(server *grpc.Server) {
