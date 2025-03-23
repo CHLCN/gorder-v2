@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/CHLCN/gorder-v2/common/discovery"
 	"github.com/CHLCN/gorder-v2/common/genproto/orderpb"
+	"github.com/CHLCN/gorder-v2/common/logging"
 	"github.com/CHLCN/gorder-v2/order/service"
 	"github.com/sirupsen/logrus"
 
@@ -16,6 +17,7 @@ import (
 )
 
 func init() {
+	logging.Init()
 	if err := config.NewViperConfig(); err != nil {
 		logrus.Fatal(err)
 	}

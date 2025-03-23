@@ -5,6 +5,7 @@ import (
 	"github.com/CHLCN/gorder-v2/common/config"
 	"github.com/CHLCN/gorder-v2/common/discovery"
 	"github.com/CHLCN/gorder-v2/common/genproto/stockpb"
+	"github.com/CHLCN/gorder-v2/common/logging"
 	"github.com/CHLCN/gorder-v2/common/server"
 	"github.com/CHLCN/gorder-v2/stock/ports"
 	"github.com/CHLCN/gorder-v2/stock/service"
@@ -14,9 +15,11 @@ import (
 )
 
 func init() {
+	logging.Init()
 	if err := config.NewViperConfig(); err != nil {
 		logrus.Fatal(err)
 	}
+
 }
 
 func main() {
