@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+
 	"github.com/CHLCN/gorder-v2/common/broker"
 	grpcClient "github.com/CHLCN/gorder-v2/common/client"
 	"github.com/CHLCN/gorder-v2/common/metrics"
@@ -35,7 +36,7 @@ func NewApplication(ctx context.Context) (app.Application, func()) {
 
 }
 
-func newApplication(ctx context.Context, stockGRPC query.StockService, ch *amqp.Channel) app.Application {
+func newApplication(_ context.Context, stockGRPC query.StockService, ch *amqp.Channel) app.Application {
 	orderRepo := adapters.NewMemoryOrderRepository()
 	logger := logrus.NewEntry(logrus.StandardLogger())
 	metricClient := metrics.TodoMetrics{}

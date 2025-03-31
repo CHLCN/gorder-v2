@@ -2,19 +2,18 @@ package adapters
 
 import (
 	"context"
-	domain "github.com/CHLCN/gorder-v2/order/domain/order"
-	"github.com/sirupsen/logrus"
 	"strconv"
 	"sync"
 	"time"
+
+	domain "github.com/CHLCN/gorder-v2/order/domain/order"
+	"github.com/sirupsen/logrus"
 )
 
 type MemoryOrderRepository struct {
 	lock  *sync.RWMutex
 	store []*domain.Order
 }
-
-var fakeData = []*domain.Order{}
 
 func NewMemoryOrderRepository() *MemoryOrderRepository {
 	s := make([]*domain.Order, 0)
@@ -69,10 +68,11 @@ func (m *MemoryOrderRepository) Update(ctx context.Context, order *domain.Order,
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	found := false
+
 	for i, o := range m.store {
 		if o.ID == order.ID && o.CustomerID == order.CustomerID {
 			found = true
-			updateOrder, err := updateFn(ctx, o)
+			updateOrder, err := updateFn(ctx, order)
 			if err != nil {
 				return err
 			}
