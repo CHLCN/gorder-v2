@@ -2,14 +2,14 @@ package main
 
 import (
 	"fmt"
+	client "github.com/CHLCN/gorder-v2/common/client/order"
 	"github.com/CHLCN/gorder-v2/common/tracing"
-	"net/http"
-
-	"github.com/CHLCN/gorder-v2/common/genproto/orderpb"
 	"github.com/CHLCN/gorder-v2/order/app"
 	"github.com/CHLCN/gorder-v2/order/app/command"
 	"github.com/CHLCN/gorder-v2/order/app/query"
+	"github.com/CHLCN/gorder-v2/order/convertor"
 	"github.com/gin-gonic/gin"
+	"net/http"
 )
 
 type HTTPServer struct {
@@ -19,14 +19,15 @@ type HTTPServer struct {
 func (H HTTPServer) PostCustomerCustomerIDOrders(c *gin.Context, customerID string) {
 	ctx, span := tracing.Start(c, "PostCustomerCustomerIDOrders")
 	defer span.End()
-	var req orderpb.CreateOrderRequest
+
+	var req client.CreateOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
 	}
 	r, err := H.app.Commands.CreateOrder.Handle(ctx, command.CreateOrder{
 		CustomerID: req.CustomerID,
-		Items:      req.Items,
+		Items:      convertor.NewItemWithQuantityConvertor().ClientsToEntities(req.Items),
 	})
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"error": err.Error()})
