@@ -2,12 +2,12 @@ package ports
 
 import (
 	"context"
-	"github.com/CHLCN/gorder-v2/order/convertor"
 
 	"github.com/CHLCN/gorder-v2/common/genproto/orderpb"
 	"github.com/CHLCN/gorder-v2/order/app"
 	"github.com/CHLCN/gorder-v2/order/app/command"
 	"github.com/CHLCN/gorder-v2/order/app/query"
+	"github.com/CHLCN/gorder-v2/order/convertor"
 	domain "github.com/CHLCN/gorder-v2/order/domain/order"
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/sirupsen/logrus"
@@ -36,7 +36,7 @@ func (G GRPCServer) CreateOrder(ctx context.Context, request *orderpb.CreateOrde
 }
 
 func (G GRPCServer) GetOrder(ctx context.Context, request *orderpb.GetOrderRequest) (*orderpb.Order, error) {
-	o, err := G.app.Queries.GetCustormerOrder.Handle(ctx, query.GetCustomerOrder{
+	o, err := G.app.Queries.GetCustomerOrder.Handle(ctx, query.GetCustomerOrder{
 		CustomerID: request.CustomerID,
 		OrderID:    request.OrderID,
 	})
@@ -53,8 +53,7 @@ func (G GRPCServer) UpdateOrder(ctx context.Context, request *orderpb.Order) (_ 
 		request.CustomerID,
 		request.Status,
 		request.PaymentLink,
-		convertor.NewItemConvertor().ProtosToEntities(request.Items),
-	)
+		convertor.NewItemConvertor().ProtosToEntities(request.Items))
 	if err != nil {
 		err = status.Error(codes.Internal, err.Error())
 		return nil, err

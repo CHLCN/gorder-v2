@@ -2,6 +2,7 @@ package query
 
 import (
 	"context"
+	"github.com/CHLCN/gorder-v2/common/tracing"
 
 	"github.com/CHLCN/gorder-v2/common/decorator"
 	domain "github.com/CHLCN/gorder-v2/order/domain/order"
@@ -35,9 +36,12 @@ func NewGetCustomerOrderHandler(
 }
 
 func (g getCustomerOrderHandler) Handle(ctx context.Context, query GetCustomerOrder) (*domain.Order, error) {
+	_, span := tracing.Start(ctx, "handle...")
 	o, err := g.orderRepo.Get(ctx, query.OrderID, query.CustomerID)
 	if err != nil {
 		return nil, err
 	}
+	span.AddEvent("get_success")
+	span.End()
 	return o, nil
 }

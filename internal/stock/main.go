@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/CHLCN/gorder-v2/common/tracing"
 
-	"github.com/CHLCN/gorder-v2/common/config"
+	_ "github.com/CHLCN/gorder-v2/common/config"
 	"github.com/CHLCN/gorder-v2/common/discovery"
 	"github.com/CHLCN/gorder-v2/common/genproto/stockpb"
 	"github.com/CHLCN/gorder-v2/common/logging"
@@ -18,10 +18,6 @@ import (
 
 func init() {
 	logging.Init()
-	if err := config.NewViperConfig(); err != nil {
-		logrus.Fatal(err)
-	}
-
 }
 
 func main() {
@@ -30,7 +26,7 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	
+
 	shutdown, err := tracing.InitJaegerProvider(viper.GetString("jaeger.url"), serviceName)
 	if err != nil {
 		logrus.Fatal(err)

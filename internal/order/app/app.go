@@ -16,5 +16,5 @@ type Commands struct {
 }
 
 type Queries struct {
-	GetCustormerOrder query.GetCustomerOrderHandler
+	GetCustomerOrder query.GetCustomerOrderHandler
 }

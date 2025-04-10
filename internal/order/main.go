@@ -12,7 +12,7 @@ import (
 	"github.com/CHLCN/gorder-v2/order/service"
 	"github.com/sirupsen/logrus"
 
-	"github.com/CHLCN/gorder-v2/common/config"
+	_ "github.com/CHLCN/gorder-v2/common/config"
 	"github.com/CHLCN/gorder-v2/common/server"
 	"github.com/CHLCN/gorder-v2/order/ports"
 	"github.com/gin-gonic/gin"
@@ -22,9 +22,6 @@ import (
 
 func init() {
 	logging.Init()
-	if err := config.NewViperConfig(); err != nil {
-		logrus.Fatal(err)
-	}
 }
 
 func main() {
@@ -38,7 +35,7 @@ func main() {
 		logrus.Fatal(err)
 	}
 	defer shutdown(ctx)
-	
+
 	application, cleanup := service.NewApplication(ctx)
 	defer cleanup()
 
