@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
-
 	"github.com/CHLCN/gorder-v2/common/broker"
 	"github.com/CHLCN/gorder-v2/common/genproto/orderpb"
 	"github.com/CHLCN/gorder-v2/payment/app"
@@ -66,8 +64,6 @@ func (c *Consumer) handleMessage(ch *amqp.Channel, msg amqp.Delivery, q amqp.Que
 		logrus.Infof("failed to unmarshal msg to order, err=%v", err)
 		return
 	}
-	logrus.Infof("test retry, sleep for 5s, kill order now")
-	time.Sleep(5 * time.Second)
 	if _, err := c.app.Commands.CreatePayment.Handle(ctx, command.CreatePayment{Order: o}); err != nil {
 		logrus.Infof("failed to create payment, err=%v", err)
 		if err = broker.HandleRetry(ctx, ch, &msg); err != nil {

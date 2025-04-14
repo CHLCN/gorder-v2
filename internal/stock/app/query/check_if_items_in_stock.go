@@ -2,57 +2,116 @@ package query
 
 import (
 	"context"
+	"github.com/CHLCN/gorder-v2/stock/infrastructure/integration"
 
 	"github.com/CHLCN/gorder-v2/common/decorator"
-	"github.com/CHLCN/gorder-v2/common/genproto/orderpb"
 	domain "github.com/CHLCN/gorder-v2/stock/domain/stock"
+	"github.com/CHLCN/gorder-v2/stock/entity"
 	"github.com/sirupsen/logrus"
 )
 
 type CheckIfItemsInStock struct {
-	Items []*orderpb.ItemWithQuantity
+	Items []*entity.ItemWithQuantity
 }
 
-type CheckIfItemsInStockHandler decorator.QueryHandler[CheckIfItemsInStock, []*orderpb.Item]
+type CheckIfItemsInStockHandler decorator.QueryHandler[CheckIfItemsInStock, []*entity.Item]
 
 type checkIfItemsInStockHandler struct {
 	stockRepo domain.Repository
+	stripeAPI *integration.StripeAPI
 }
 
 func NewCheckIfItemsInStockHandler(
 	stockRepo domain.Repository,
+	stripeAPI *integration.StripeAPI,
 	logger *logrus.Entry,
 	metricsClient decorator.MetricsClient,
 ) CheckIfItemsInStockHandler {
 	if stockRepo == nil {
 		panic("nil stockRepo")
 	}
-	return decorator.ApplyQeuryDecorators[CheckIfItemsInStock, []*orderpb.Item](
-		checkIfItemsInStockHandler{stockRepo: stockRepo},
+	if stripeAPI == nil {
+		panic("nil stripeAPI")
+	}
+	return decorator.ApplyQeuryDecorators[CheckIfItemsInStock, []*entity.Item](
+		checkIfItemsInStockHandler{
+			stockRepo: stockRepo,
+			stripeAPI: stripeAPI,
+		},
 		logger,
 		metricsClient,
 	)
 
 }
 
+// Deprecated
 var stub = map[string]string{
 	"1": "price_1R411MCMlAMeacBOcwLUjS2a",
 	"2": "price_1R7FaoCMlAMeacBOSQMVnBU1",
 }
 
-func (c checkIfItemsInStockHandler) Handle(ctx context.Context, query CheckIfItemsInStock) ([]*orderpb.Item, error) {
-	var res []*orderpb.Item
+func (h checkIfItemsInStockHandler) Handle(ctx context.Context, query CheckIfItemsInStock) ([]*entity.Item, error) {
+	if err := h.checkStock(ctx, query.Items); err != nil {
+		return nil, err
+	}
+
+	var res []*entity.Item
 	for _, i := range query.Items {
-		// TODO: 改成从数据库 or stripe获取
-		priceID, ok := stub[i.ID]
-		if !ok {
-			priceID = stub["1"]
+		priceID, err := h.stripeAPI.GetPriceByProductID(ctx, i.ID)
+		if err != nil || priceID == "" {
+			return nil, err
 		}
-		res = append(res, &orderpb.Item{
+		res = append(res, &entity.Item{
 			ID:       i.ID,
 			Quantity: i.Quantity,
 			PriceID:  priceID,
 		})
 	}
+	// TODO: 扣库存
 	return res, nil
+}
+
+func (h checkIfItemsInStockHandler) checkStock(ctx context.Context, query []*entity.ItemWithQuantity) error {
+	var ids []string
+	for _, i := range query {
+		ids = append(ids, i.ID)
+	}
+	records, err := h.stockRepo.GetStock(ctx, ids)
+	if err != nil {
+		return err
+	}
+	idQuantityMap := make(map[string]int32)
+	for _, r := range records {
+		idQuantityMap[r.ID] += r.Quantity
+	}
+	var (
+		ok       = true
+		failedOn []struct {
+			ID   string
+			Want int32
+			Have int32
+		}
+	)
+	for _, item := range query {
+		if item.Quantity > idQuantityMap[item.ID] {
+			ok = false
+			failedOn = append(failedOn, struct {
+				ID   string
+				Want int32
+				Have int32
+			}{ID: item.ID, Want: item.Quantity, Have: idQuantityMap[item.ID]})
+		}
+	}
+	if ok {
+		return nil
+	}
+	return domain.ExceedStockError{FailedOn: failedOn}
+}
+
+func getStubPriceID(id string) string {
+	priceID, ok := stub[id]
+	if !ok {
+		priceID = stub["1"]
+	}
+	return priceID
 }

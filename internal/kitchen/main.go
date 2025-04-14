@@ -2,18 +2,19 @@ package main
 
 import (
 	"context"
+	"github.com/CHLCN/gorder-v2/common/broker"
+	grpcClient "github.com/CHLCN/gorder-v2/common/client"
 	"github.com/CHLCN/gorder-v2/common/tracing"
+	"github.com/CHLCN/gorder-v2/kitchen/adapters"
+	"os"
+	"os/signal"
+	"syscall"
 
 	_ "github.com/CHLCN/gorder-v2/common/config"
-	"github.com/CHLCN/gorder-v2/common/discovery"
-	"github.com/CHLCN/gorder-v2/common/genproto/stockpb"
 	"github.com/CHLCN/gorder-v2/common/logging"
-	"github.com/CHLCN/gorder-v2/common/server"
-	"github.com/CHLCN/gorder-v2/stock/ports"
-	"github.com/CHLCN/gorder-v2/stock/service"
+	"github.com/CHLCN/gorder-v2/kitchen/infrastructure/consumer"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	"google.golang.org/grpc"
 )
 
 func init() {
@@ -21,9 +22,7 @@ func init() {
 }
 
 func main() {
-	serviceName := viper.GetString("stock.service-name")
-	serverType := viper.GetString("stock.server-to-run")
-
+	serviceName := viper.GetString("kitchen.service-name")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -33,26 +32,35 @@ func main() {
 	}
 	defer shutdown(ctx)
 
-	application := service.NewApplication(ctx)
-
-	deregisterFunc, err := discovery.RegisterToConsul(ctx, serviceName)
+	orderClient, closeFunc, err := grpcClient.NewOrderGRPCClient(ctx)
 	if err != nil {
 		logrus.Fatal(err)
 	}
+	defer closeFunc()
+
+	ch, closeCh := broker.Connect(
+		viper.GetString("rabbitmq.user"),
+		viper.GetString("rabbitmq.password"),
+		viper.GetString("rabbitmq.host"),
+		viper.GetString("rabbitmq.port"),
+	)
+
 	defer func() {
-		_ = deregisterFunc()
+		_ = ch.Close()
+		_ = closeCh()
 	}()
 
-	switch serverType {
-	case "grpc":
-		server.RunGRPCServer(serviceName, func(server *grpc.Server) {
-			svc := ports.NewGRPCServer(application)
-			stockpb.RegisterStockServiceServer(server, svc)
-		})
-	case "http":
-		// TODO:
-	default:
-		panic("unexpected server type")
-	}
+	orderGRPC := adapters.NewOrderGRPC(orderClient)
+	go consumer.NewConsumer(orderGRPC).Listen(ch)
 
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGTERM, syscall.SIGINT)
+
+	go func() {
+		<-sigs
+		logrus.Infof("receive signal, exiting...")
+		os.Exit(0)
+	}()
+	logrus.Println("to exit, press ctrl+c")
+	select {}
 }

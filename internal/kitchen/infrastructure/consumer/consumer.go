@@ -3,31 +3,45 @@ package consumer
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/CHLCN/gorder-v2/common/broker"
 	"github.com/CHLCN/gorder-v2/common/genproto/orderpb"
-	"github.com/CHLCN/gorder-v2/payment/app"
-	"github.com/CHLCN/gorder-v2/payment/app/command"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
 )
 
+type OrderService interface {
+	UpdateOrder(ctx context.Context, request *orderpb.Order) error
+}
 type Consumer struct {
-	app app.Application
+	orderGRPC OrderService
 }
 
-func NewConsumer(app app.Application) *Consumer {
+type Order struct {
+	ID          string
+	CustomerID  string
+	Status      string
+	PaymentLink string
+	Items       []*orderpb.Item
+}
+
+func NewConsumer(orderGRPC OrderService) *Consumer {
 	return &Consumer{
-		app: app,
+		orderGRPC: orderGRPC,
 	}
 }
 
 func (c *Consumer) Listen(ch *amqp.Channel) {
-	q, err := ch.QueueDeclare(broker.EventOrderCreated, true, false, false, false, nil)
+	q, err := ch.QueueDeclare("", true, false, true, false, nil)
 	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	if err = ch.QueueBind(q.Name, "", broker.EventOrderPaid, false, nil); err != nil {
 		logrus.Fatal(err)
 	}
 
@@ -46,14 +60,13 @@ func (c *Consumer) Listen(ch *amqp.Channel) {
 }
 
 func (c *Consumer) handleMessage(ch *amqp.Channel, msg amqp.Delivery, q amqp.Queue) {
-	logrus.Infof("Payment receive a message from: %s, msg=%v", q.Name, string(msg.Body))
+	var err error
+	logrus.Infof("kitchen receive a message from: %s, msg=%v", q.Name, string(msg.Body))
 	ctx := broker.ExtractRabbitMQHeaders(context.Background(), msg.Headers)
 	tr := otel.Tracer("rabbitmq")
-	_, span := tr.Start(ctx, fmt.Sprintf("rabbitmq.%s.consume", q.Name))
-	defer span.End()
-
-	var err error
+	mqCtx, span := tr.Start(ctx, fmt.Sprintf("rabbitmq.%s.consume", q.Name))
 	defer func() {
+		span.End()
 		if err != nil {
 			_ = msg.Nack(false, false)
 		} else {
@@ -61,21 +74,36 @@ func (c *Consumer) handleMessage(ch *amqp.Channel, msg amqp.Delivery, q amqp.Que
 		}
 	}()
 
-	o := &orderpb.Order{}
+	o := &Order{}
 	if err := json.Unmarshal(msg.Body, o); err != nil {
 		logrus.Infof("failed to unmarshal msg to order, err=%v", err)
 		return
 	}
-	logrus.Infof("test retry, sleep for 5s, kill order now")
-	time.Sleep(5 * time.Second)
-	if _, err := c.app.Commands.CreatePayment.Handle(ctx, command.CreatePayment{Order: o}); err != nil {
-		logrus.Infof("failed to create payment, err=%v", err)
-		if err = broker.HandleRetry(ctx, ch, &msg); err != nil {
-			logrus.Warnf("retry_error, error handling retry, messageID=%s, err=%v", msg.MessageId, err)
+	if o.Status != "paid" {
+		err = errors.New("order not paid, cannot cook")
+		return
+	}
+	cook(o)
+	span.AddEvent(fmt.Sprintf("order_cook: %v", o))
+	if err := c.orderGRPC.UpdateOrder(mqCtx, &orderpb.Order{
+		ID:          o.ID,
+		CustomerID:  o.CustomerID,
+		Status:      "ready",
+		Items:       o.Items,
+		PaymentLink: o.PaymentLink,
+	}); err != nil {
+		if err = broker.HandleRetry(mqCtx, ch, &msg); err != nil {
+			logrus.Warnf("kitchen: error handling retry: err=%v", err)
 		}
 		return
 	}
 
-	span.AddEvent("payment.created")
+	span.AddEvent("kitchen.order.finished.updated")
 	logrus.Info("consumer success")
+}
+
+func cook(o *Order) {
+	logrus.Printf("cooking order: %s", o.ID)
+	time.Sleep(5 * time.Second)
+	logrus.Printf("order %s done!", o.ID)
 }
