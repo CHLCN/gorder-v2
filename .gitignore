@@ -12,5 +12,4 @@ go.work.sum
 .env
 **/tmp/
 **/bin/
-
-/data
+**/data
