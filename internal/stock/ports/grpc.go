@@ -5,10 +5,11 @@ import (
 	"github.com/CHLCN/gorder-v2/common/tracing"
 	"github.com/CHLCN/gorder-v2/stock/convertor"
 
+	"github.com/CHLCN/gorder-v2/common/genproto/stockpb"
 	"github.com/CHLCN/gorder-v2/stock/app"
 	"github.com/CHLCN/gorder-v2/stock/app/query"
-
-	"github.com/CHLCN/gorder-v2/common/genproto/stockpb"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 )
 
 type GRPCServer struct {
@@ -24,7 +25,7 @@ func (G GRPCServer) GetItems(ctx context.Context, request *stockpb.GetItemsReque
 	defer span.End()
 	items, err := G.app.Queries.GetItems.Handle(ctx, query.GetItems{ItemIDs: request.ItemIDs})
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 	return &stockpb.GetItemsResponse{Items: convertor.NewItemConvertor().EntitiesToProtos(items)}, nil
 }
@@ -36,7 +37,7 @@ func (G GRPCServer) CheckIfItemsInStock(ctx context.Context, request *stockpb.Ch
 		Items: convertor.NewItemWithQuantityConvertor().ProtosToEntities(request.Items),
 	})
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 	return &stockpb.CheckIfItemsInStockResponse{
 		InStock: 1,
