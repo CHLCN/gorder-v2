@@ -2,7 +2,7 @@ package adapters
 
 import (
 	"context"
-	"github.com/CHLCN/gorder-v2/stock/entity"
+	"github.com/CHLCN/gorder-v2/common/entity"
 	"sync"
 
 	domain "github.com/CHLCN/gorder-v2/stock/domain/stock"

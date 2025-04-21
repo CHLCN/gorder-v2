@@ -2,20 +2,20 @@ package command
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"github.com/CHLCN/gorder-v2/common/broker"
-	"github.com/CHLCN/gorder-v2/common/decorator"
-	"github.com/CHLCN/gorder-v2/order/convertor"
-	"github.com/pkg/errors"
 
+	"github.com/CHLCN/gorder-v2/common/broker"
+	"github.com/CHLCN/gorder-v2/common/convertor"
+	"github.com/CHLCN/gorder-v2/common/decorator"
+	"github.com/CHLCN/gorder-v2/common/entity"
+	"github.com/CHLCN/gorder-v2/common/logging"
 	"github.com/CHLCN/gorder-v2/order/app/query"
 	domain "github.com/CHLCN/gorder-v2/order/domain/order"
-	"github.com/CHLCN/gorder-v2/order/entity"
+	"github.com/pkg/errors"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
-	status "google.golang.org/grpc/status"
+	"google.golang.org/grpc/status"
 )
 
 type CreateOrder struct {
@@ -40,7 +40,7 @@ func NewCreateOrderHandler(
 	stockGRPC query.StockService,
 	channel *amqp.Channel,
 	logger *logrus.Entry,
-	metricsClient decorator.MetricsClient,
+	metricClient decorator.MetricsClient,
 ) CreateOrderHandler {
 	if orderRepo == nil {
 		panic("nil orderRepo")
@@ -49,7 +49,7 @@ func NewCreateOrderHandler(
 		panic("nil stockGRPC")
 	}
 	if channel == nil {
-		panic("nil channel")
+		panic("nil channel ")
 	}
 	return decorator.ApplyCommandDecorators[CreateOrder, *CreateOrderResult](
 		createOrderHandler{
@@ -58,18 +58,16 @@ func NewCreateOrderHandler(
 			channel:   channel,
 		},
 		logger,
-		metricsClient,
+		metricClient,
 	)
 }
 
 func (c createOrderHandler) Handle(ctx context.Context, cmd CreateOrder) (*CreateOrderResult, error) {
-	q, err := c.channel.QueueDeclare(broker.EventOrderCreated, true, false, false, false, nil)
-	if err != nil {
-		return nil, err
-	}
+	var err error
+	defer logging.WhenCommandExecute(ctx, "CreateOrderHandler", cmd, err)
 
 	t := otel.Tracer("rabbitmq")
-	ctx, span := t.Start(ctx, fmt.Sprintf("rabbitmq.%s.publish", q.Name))
+	ctx, span := t.Start(ctx, fmt.Sprintf("rabbitmq.%s.publish", broker.EventOrderCreated))
 	defer span.End()
 
 	validItems, err := c.validate(ctx, cmd.Items)
@@ -81,30 +79,26 @@ func (c createOrderHandler) Handle(ctx context.Context, cmd CreateOrder) (*Creat
 		return nil, err
 	}
 	o, err := c.orderRepo.Create(ctx, pendingOrder)
-
 	if err != nil {
 		return nil, err
 	}
 
-	marshalledOrder, err := json.Marshal(o)
-	if err != nil {
-		return nil, err
-	}
-	header := broker.InjectRabbitMQHeaders(ctx)
-	err = c.channel.PublishWithContext(ctx, "", q.Name, false, false, amqp.Publishing{
-		ContentType:  "application/json",
-		DeliveryMode: amqp.Persistent,
-		Body:         marshalledOrder,
-		Headers:      header,
+	err = broker.PublishEvent(ctx, broker.PublishEventReq{
+		Channel:  c.channel,
+		Routing:  broker.Direct,
+		Queue:    broker.EventOrderCreated,
+		Exchange: "",
+		Body:     o,
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "publish event error q.Name=%s", q.Name)
+		return nil, errors.Wrapf(err, "publish event error q.Name=%s", broker.EventOrderCreated)
 	}
+
 	return &CreateOrderResult{OrderID: o.ID}, nil
 }
 
 func (c createOrderHandler) validate(ctx context.Context, items []*entity.ItemWithQuantity) ([]*entity.Item, error) {
-	if len(items) == 1 {
+	if len(items) == 0 {
 		return nil, errors.New("must have at least one item")
 	}
 	items = packItems(items)
@@ -120,7 +114,6 @@ func packItems(items []*entity.ItemWithQuantity) []*entity.ItemWithQuantity {
 	for _, item := range items {
 		merged[item.ID] += item.Quantity
 	}
-
 	var res []*entity.ItemWithQuantity
 	for id, quantity := range merged {
 		res = append(res, &entity.ItemWithQuantity{

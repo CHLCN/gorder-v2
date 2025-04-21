@@ -3,14 +3,13 @@ package ports
 import (
 	"context"
 
+	"github.com/CHLCN/gorder-v2/common/convertor"
 	"github.com/CHLCN/gorder-v2/common/genproto/orderpb"
 	"github.com/CHLCN/gorder-v2/order/app"
 	"github.com/CHLCN/gorder-v2/order/app/command"
 	"github.com/CHLCN/gorder-v2/order/app/query"
-	"github.com/CHLCN/gorder-v2/order/convertor"
 	domain "github.com/CHLCN/gorder-v2/order/domain/order"
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -43,11 +42,16 @@ func (G GRPCServer) GetOrder(ctx context.Context, request *orderpb.GetOrderReque
 	if err != nil {
 		return nil, status.Error(codes.NotFound, err.Error())
 	}
-	return convertor.NewOrderConvertor().EntityToProto(o), nil
+	return &orderpb.Order{
+		ID:          o.ID,
+		CustomerID:  o.CustomerID,
+		Status:      o.Status,
+		Items:       convertor.NewItemConvertor().EntitiesToProtos(o.Items),
+		PaymentLink: o.PaymentLink,
+	}, nil
 }
 
 func (G GRPCServer) UpdateOrder(ctx context.Context, request *orderpb.Order) (_ *emptypb.Empty, err error) {
-	logrus.Infof("order_grpc||request_in||request=%+v", request)
 	order, err := domain.NewOrder(
 		request.ID,
 		request.CustomerID,

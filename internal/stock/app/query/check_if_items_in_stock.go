@@ -3,14 +3,15 @@ package query
 import (
 	"context"
 	"github.com/CHLCN/gorder-v2/common/handler/redis"
+	"github.com/CHLCN/gorder-v2/common/logging"
 	"github.com/CHLCN/gorder-v2/stock/infrastructure/integration"
 	"github.com/pkg/errors"
 	"strings"
 	"time"
 
 	"github.com/CHLCN/gorder-v2/common/decorator"
+	"github.com/CHLCN/gorder-v2/common/entity"
 	domain "github.com/CHLCN/gorder-v2/stock/domain/stock"
-	"github.com/CHLCN/gorder-v2/stock/entity"
 	"github.com/sirupsen/logrus"
 )
 
@@ -62,12 +63,12 @@ func (h checkIfItemsInStockHandler) Handle(ctx context.Context, query CheckIfIte
 	if err := lock(ctx, getLockKey(query)); err != nil {
 		return nil, errors.Wrapf(err, "redis lock error: key=%s", getLockKey(query))
 	}
+
 	defer func() {
 		if err := unlock(ctx, getLockKey(query)); err != nil {
-			logrus.Warnf("redis unlock fail, err=%v", err)
+			logging.Warnf(ctx, nil, "redis unlock fail, err=%v", err)
 		}
 	}()
-
 	var res []*entity.Item
 	for _, i := range query.Items {
 		priceID, err := h.stripeAPI.GetPriceByProductID(ctx, i.ID)

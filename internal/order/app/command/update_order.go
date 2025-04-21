@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/CHLCN/gorder-v2/common/decorator"
+	"github.com/CHLCN/gorder-v2/common/logging"
 	domain "github.com/CHLCN/gorder-v2/order/domain/order"
 	"github.com/sirupsen/logrus"
 )
@@ -17,13 +18,13 @@ type UpdateOrderHandler decorator.CommandHandler[UpdateOrder, interface{}]
 
 type updateOrderHandler struct {
 	orderRepo domain.Repository
-	// stockGRPC
+	//stockGRPC
 }
 
 func NewUpdateOrderHandler(
 	orderRepo domain.Repository,
 	logger *logrus.Entry,
-	metricsClient decorator.MetricsClient,
+	metricClient decorator.MetricsClient,
 ) UpdateOrderHandler {
 	if orderRepo == nil {
 		panic("nil orderRepo")
@@ -31,18 +32,18 @@ func NewUpdateOrderHandler(
 	return decorator.ApplyCommandDecorators[UpdateOrder, interface{}](
 		updateOrderHandler{orderRepo: orderRepo},
 		logger,
-		metricsClient,
+		metricClient,
 	)
 }
 
 func (c updateOrderHandler) Handle(ctx context.Context, cmd UpdateOrder) (interface{}, error) {
+	var err error
+	defer logging.WhenCommandExecute(ctx, "UpdateOrderHandler", cmd, err)
+
 	if cmd.UpdateFn == nil {
-		logrus.Warn("updateOrderHandler got nil UpdateFn, orderID=%v", cmd.Order)
-		cmd.UpdateFn = func(_ context.Context, order *domain.Order) (*domain.Order, error) {
-			return order, nil
-		}
+		logrus.Panicf("UpdateOrderHandler got nil order, cmd=%+v", cmd)
 	}
-	if err := c.orderRepo.Update(ctx, cmd.Order, cmd.UpdateFn); err != nil {
+	if err = c.orderRepo.Update(ctx, cmd.Order, cmd.UpdateFn); err != nil {
 		return nil, err
 	}
 	return nil, nil

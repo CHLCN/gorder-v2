@@ -3,8 +3,8 @@ package query
 import (
 	"context"
 	"github.com/CHLCN/gorder-v2/common/decorator"
+	"github.com/CHLCN/gorder-v2/common/entity"
 	domain "github.com/CHLCN/gorder-v2/stock/domain/stock"
-	"github.com/CHLCN/gorder-v2/stock/entity"
 	"github.com/sirupsen/logrus"
 )
 

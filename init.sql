@@ -13,4 +13,4 @@ CREATE TABLE `o_stock` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO o_stock (product_id, quantity, version)
-VALUES ('prod_R3g7MikGYsXKzr', 1000, 0), ('prod_R285C3Wb7FDprc', 500, 0);
+VALUES ('prod_S1IBoZ54F9VC8T', 1000, 0), ('prod_RxwvvcFfEzS9Yb', 500, 0);

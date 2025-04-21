@@ -2,8 +2,8 @@ package ports
 
 import (
 	"context"
+	"github.com/CHLCN/gorder-v2/common/convertor"
 	"github.com/CHLCN/gorder-v2/common/tracing"
-	"github.com/CHLCN/gorder-v2/stock/convertor"
 
 	"github.com/CHLCN/gorder-v2/common/genproto/stockpb"
 	"github.com/CHLCN/gorder-v2/stock/app"
