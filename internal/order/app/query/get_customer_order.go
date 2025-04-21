@@ -22,13 +22,13 @@ type getCustomerOrderHandler struct {
 
 func NewGetCustomerOrderHandler(
 	orderRepo domain.Repository,
-	logger *logrus.Entry,
+	logger *logrus.Logger,
 	metricsClient decorator.MetricsClient,
 ) GetCustomerOrderHandler {
 	if orderRepo == nil {
 		panic("nil orderRepo")
 	}
-	return decorator.ApplyQeuryDecorators[GetCustomerOrder, *domain.Order](
+	return decorator.ApplyQueryDecorators[GetCustomerOrder, *domain.Order](
 		getCustomerOrderHandler{orderRepo: orderRepo},
 		logger,
 		metricsClient,

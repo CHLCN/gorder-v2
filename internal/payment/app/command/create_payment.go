@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"github.com/CHLCN/gorder-v2/common/consts"
 	"github.com/CHLCN/gorder-v2/common/convertor"
 	"github.com/CHLCN/gorder-v2/common/entity"
 
@@ -30,12 +31,15 @@ func (c createPaymentHandler) Handle(ctx context.Context, cmd CreatePayment) (st
 	if err != nil {
 		return "", err
 	}
-	newOrder := &entity.Order{
-		ID:          cmd.Order.ID,
-		CustomerID:  cmd.Order.CustomerID,
-		Status:      "waiting_for_payment",
-		Items:       cmd.Order.Items,
-		PaymentLink: link,
+	newOrder, err := entity.NewValidOrder(
+		cmd.Order.ID,
+		cmd.Order.CustomerID,
+		consts.OrderStatusWaitingForPayment,
+		link,
+		cmd.Order.Items,
+	)
+	if err != nil {
+		return "", err
 	}
 	err = c.orderGRPC.UpdateOrder(ctx, convertor.NewOrderConvertor().EntityToProto(newOrder))
 	return link, err
@@ -44,7 +48,7 @@ func (c createPaymentHandler) Handle(ctx context.Context, cmd CreatePayment) (st
 func NewCreatePaymentHandler(
 	processor domain.Processor,
 	orderGRPC OrderService,
-	logger *logrus.Entry,
+	logger *logrus.Logger,
 	metricClient decorator.MetricsClient,
 ) CreatePaymentHandler {
 	return decorator.ApplyCommandDecorators[CreatePayment, string](

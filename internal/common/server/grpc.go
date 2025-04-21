@@ -1,9 +1,9 @@
 package server
 
 import (
-	"github.com/CHLCN/gorder-v2/common/logging"
 	"net"
 
+	"github.com/CHLCN/gorder-v2/common/logging"
 	grpc_logrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
 	grpc_tags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
 	"github.com/sirupsen/logrus"
@@ -47,7 +47,7 @@ func RunGRPCServerOnAddr(addr string, registerServer func(server *grpc.Server)) 
 	if err != nil {
 		logrus.Panic(err)
 	}
-	logrus.Infof("Starting gRPC server, listening %s", addr)
+	logrus.Infof("Starting gRPC server, Listening: %s", addr)
 	if err := grpcServer.Serve(listen); err != nil {
 		logrus.Panic(err)
 	}

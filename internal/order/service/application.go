@@ -38,22 +38,20 @@ func NewApplication(ctx context.Context) (app.Application, func()) {
 		_ = closeCh()
 		_ = ch.Close()
 	}
-
 }
 
 func newApplication(_ context.Context, stockGRPC query.StockService, ch *amqp.Channel) app.Application {
 	//orderRepo := adapters.NewMemoryOrderRepository()
 	mongoClient := newMongoClient()
 	orderRepo := adapters.NewOrderRepositoryMongo(mongoClient)
-	logger := logrus.NewEntry(logrus.StandardLogger())
 	metricClient := metrics.TodoMetrics{}
 	return app.Application{
 		Commands: app.Commands{
-			CreateOrder: command.NewCreateOrderHandler(orderRepo, stockGRPC, ch, logger, metricClient),
-			UpdateOrder: command.NewUpdateOrderHandler(orderRepo, logger, metricClient),
+			CreateOrder: command.NewCreateOrderHandler(orderRepo, stockGRPC, ch, logrus.StandardLogger(), metricClient),
+			UpdateOrder: command.NewUpdateOrderHandler(orderRepo, logrus.StandardLogger(), metricClient),
 		},
 		Queries: app.Queries{
-			GetCustomerOrder: query.NewGetCustomerOrderHandler(orderRepo, logger, metricClient),
+			GetCustomerOrder: query.NewGetCustomerOrderHandler(orderRepo, logrus.StandardLogger(), metricClient),
 		},
 	}
 }

@@ -2,16 +2,16 @@ package query
 
 import (
 	"context"
-	"github.com/CHLCN/gorder-v2/common/handler/redis"
-	"github.com/CHLCN/gorder-v2/common/logging"
-	"github.com/CHLCN/gorder-v2/stock/infrastructure/integration"
-	"github.com/pkg/errors"
 	"strings"
 	"time"
 
 	"github.com/CHLCN/gorder-v2/common/decorator"
 	"github.com/CHLCN/gorder-v2/common/entity"
+	"github.com/CHLCN/gorder-v2/common/handler/redis"
+	"github.com/CHLCN/gorder-v2/common/logging"
 	domain "github.com/CHLCN/gorder-v2/stock/domain/stock"
+	"github.com/CHLCN/gorder-v2/stock/infrastructure/integration"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -33,8 +33,8 @@ type checkIfItemsInStockHandler struct {
 func NewCheckIfItemsInStockHandler(
 	stockRepo domain.Repository,
 	stripeAPI *integration.StripeAPI,
-	logger *logrus.Entry,
-	metricsClient decorator.MetricsClient,
+	logger *logrus.Logger,
+	metricClient decorator.MetricsClient,
 ) CheckIfItemsInStockHandler {
 	if stockRepo == nil {
 		panic("nil stockRepo")
@@ -42,44 +42,51 @@ func NewCheckIfItemsInStockHandler(
 	if stripeAPI == nil {
 		panic("nil stripeAPI")
 	}
-	return decorator.ApplyQeuryDecorators[CheckIfItemsInStock, []*entity.Item](
+	return decorator.ApplyQueryDecorators[CheckIfItemsInStock, []*entity.Item](
 		checkIfItemsInStockHandler{
 			stockRepo: stockRepo,
 			stripeAPI: stripeAPI,
 		},
 		logger,
-		metricsClient,
+		metricClient,
 	)
-
 }
 
 // Deprecated
 var stub = map[string]string{
-	"1": "price_1R411MCMlAMeacBOcwLUjS2a",
-	"2": "price_1R7FaoCMlAMeacBOSQMVnBU1",
+	"1": "price_1QBYvXRuyMJmUCSsEyQm2oP7",
+	"2": "price_1QBYl4RuyMJmUCSsWt2tgh6d",
 }
 
 func (h checkIfItemsInStockHandler) Handle(ctx context.Context, query CheckIfItemsInStock) ([]*entity.Item, error) {
 	if err := lock(ctx, getLockKey(query)); err != nil {
 		return nil, errors.Wrapf(err, "redis lock error: key=%s", getLockKey(query))
 	}
-
 	defer func() {
 		if err := unlock(ctx, getLockKey(query)); err != nil {
 			logging.Warnf(ctx, nil, "redis unlock fail, err=%v", err)
 		}
 	}()
+	var err error
 	var res []*entity.Item
+	defer func() {
+		f := logrus.Fields{
+			"query": query,
+			"res":   res,
+		}
+		if err != nil {
+			logging.Errorf(ctx, f, "checkIfItemsInStock err=%v", err)
+		} else {
+			logging.Infof(ctx, f, "%s", "checkIfItemsInStock success")
+		}
+	}()
+
 	for _, i := range query.Items {
-		priceID, err := h.stripeAPI.GetPriceByProductID(ctx, i.ID)
-		if err != nil || priceID == "" {
+		p, err := h.stripeAPI.GetProductByID(ctx, i.ID)
+		if err != nil {
 			return nil, err
 		}
-		res = append(res, &entity.Item{
-			ID:       i.ID,
-			Quantity: i.Quantity,
-			PriceID:  priceID,
-		})
+		res = append(res, entity.NewItem(i.ID, p.Name, i.Quantity, p.DefaultPrice.ID))
 	}
 	if err := h.checkStock(ctx, query.Items); err != nil {
 		return nil, err
@@ -144,10 +151,11 @@ func (h checkIfItemsInStockHandler) checkStock(ctx context.Context, query []*ent
 			for _, e := range existing {
 				for _, q := range query {
 					if e.ID == q.ID {
-						newItems = append(newItems, &entity.ItemWithQuantity{
-							ID:       e.ID,
-							Quantity: e.Quantity - q.Quantity,
-						})
+						iq, err := entity.NewValidItemWithQuantity(e.ID, e.Quantity-q.Quantity)
+						if err != nil {
+							return nil, err
+						}
+						newItems = append(newItems, iq)
 					}
 				}
 			}

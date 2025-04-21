@@ -4,10 +4,10 @@ import (
 	"context"
 
 	"github.com/CHLCN/gorder-v2/common/entity"
+	"github.com/CHLCN/gorder-v2/common/logging"
 	"github.com/CHLCN/gorder-v2/stock/infrastructure/persistent"
 	"github.com/CHLCN/gorder-v2/stock/infrastructure/persistent/builder"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -43,15 +43,15 @@ func (m MySQLStockRepository) UpdateStock(
 	ctx context.Context,
 	data []*entity.ItemWithQuantity,
 	updateFn func(
-		ctx context.Context,
-		existing []*entity.ItemWithQuantity,
-		query []*entity.ItemWithQuantity,
-	) ([]*entity.ItemWithQuantity, error),
+	ctx context.Context,
+	existing []*entity.ItemWithQuantity,
+	query []*entity.ItemWithQuantity,
+) ([]*entity.ItemWithQuantity, error),
 ) error {
 	return m.db.StartTransaction(func(tx *gorm.DB) (err error) {
 		defer func() {
 			if err != nil {
-				logrus.Warnf("update stock transaction err=%v", err)
+				logging.Warnf(ctx, nil, "update stock transaction err=%v", err)
 			}
 		}()
 		err = m.updatePessimistic(ctx, tx, data, updateFn)
@@ -65,7 +65,7 @@ func (m MySQLStockRepository) updateOptimistic(
 	tx *gorm.DB,
 	data []*entity.ItemWithQuantity,
 	updateFn func(ctx context.Context, existing []*entity.ItemWithQuantity, query []*entity.ItemWithQuantity,
-	) ([]*entity.ItemWithQuantity, error)) error {
+) ([]*entity.ItemWithQuantity, error)) error {
 	for _, queryData := range data {
 		var newestRecord *persistent.StockModel
 		newestRecord, err := m.db.GetStockByID(ctx, builder.NewStock().ProductIDs(queryData.ID))
@@ -103,7 +103,7 @@ func (m MySQLStockRepository) updatePessimistic(
 	tx *gorm.DB,
 	data []*entity.ItemWithQuantity,
 	updateFn func(ctx context.Context, existing []*entity.ItemWithQuantity, query []*entity.ItemWithQuantity,
-	) ([]*entity.ItemWithQuantity, error)) error {
+) ([]*entity.ItemWithQuantity, error)) error {
 	var dest []persistent.StockModel
 	dest, err := m.db.BatchGetStockByID(ctx, builder.NewStock().ProductIDs(getIDFromEntities(data)...).ForUpdate())
 	if err != nil {
@@ -113,6 +113,7 @@ func (m MySQLStockRepository) updatePessimistic(
 	existing := m.unmarshalFromDatabase(dest)
 	updated, err := updateFn(ctx, existing, data)
 	if err != nil {
+		panic(err)
 		return err
 	}
 

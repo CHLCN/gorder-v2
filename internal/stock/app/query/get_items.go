@@ -20,13 +20,13 @@ type getItemsHandler struct {
 
 func NewGetItemsHandler(
 	stockRepo domain.Repository,
-	logger *logrus.Entry,
+	logger *logrus.Logger,
 	metricsClient decorator.MetricsClient,
 ) GetItemsHandler {
 	if stockRepo == nil {
 		panic("nil stockRepo")
 	}
-	return decorator.ApplyQeuryDecorators[GetItems, []*entity.Item](
+	return decorator.ApplyQueryDecorators[GetItems, []*entity.Item](
 		getItemsHandler{stockRepo: stockRepo},
 		logger,
 		metricsClient,

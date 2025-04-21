@@ -2,7 +2,8 @@ package integration
 
 import (
 	"context"
-	_ "github.com/CHLCN/gorder-v2/common/logging"
+
+	_ "github.com/CHLCN/gorder-v2/common/config"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/stripe/stripe-go/v80"
@@ -28,4 +29,9 @@ func (s *StripeAPI) GetPriceByProductID(ctx context.Context, pid string) (string
 		return "", err
 	}
 	return result.DefaultPrice.ID, err
+}
+
+func (s *StripeAPI) GetProductByID(ctx context.Context, pid string) (*stripe.Product, error) {
+	stripe.Key = s.apiKey
+	return product.Get(pid, &stripe.ProductParams{})
 }

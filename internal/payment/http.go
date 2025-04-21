@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/CHLCN/gorder-v2/common/consts"
 	"github.com/CHLCN/gorder-v2/common/entity"
 	"io"
 	"net/http"
@@ -83,13 +84,13 @@ func (h *PaymentHandler) handleWebhook(c *gin.Context) {
 				Routing:  broker.FanOut,
 				Queue:    "",
 				Exchange: broker.EventOrderPaid,
-				Body: &entity.Order{
-					ID:          session.Metadata["orderID"],
-					CustomerID:  session.Metadata["customerID"],
-					Status:      string(stripe.CheckoutSessionPaymentStatusPaid),
-					PaymentLink: session.Metadata["paymentLink"],
-					Items:       items,
-				},
+				Body: entity.NewOrder(
+					session.Metadata["orderID"],
+					session.Metadata["customerID"],
+					consts.OrderStatusPaid,
+					session.Metadata["paymentLink"],
+					items,
+				),
 			})
 		}
 	}

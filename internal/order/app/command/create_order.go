@@ -35,13 +35,7 @@ type createOrderHandler struct {
 	channel   *amqp.Channel
 }
 
-func NewCreateOrderHandler(
-	orderRepo domain.Repository,
-	stockGRPC query.StockService,
-	channel *amqp.Channel,
-	logger *logrus.Entry,
-	metricClient decorator.MetricsClient,
-) CreateOrderHandler {
+func NewCreateOrderHandler(orderRepo domain.Repository, stockGRPC query.StockService, channel *amqp.Channel, logger *logrus.Logger, metricClient decorator.MetricsClient) CreateOrderHandler {
 	if orderRepo == nil {
 		panic("nil orderRepo")
 	}
@@ -116,10 +110,7 @@ func packItems(items []*entity.ItemWithQuantity) []*entity.ItemWithQuantity {
 	}
 	var res []*entity.ItemWithQuantity
 	for id, quantity := range merged {
-		res = append(res, &entity.ItemWithQuantity{
-			ID:       id,
-			Quantity: quantity,
-		})
+		res = append(res, entity.NewItemWithQuantity(id, quantity))
 	}
 	return res
 }
