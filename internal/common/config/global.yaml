@@ -3,7 +3,7 @@ dial-grpc-timeout: 10
 
 jaeger:
   url: "http://127.0.0.1:14268/api/traces"
-  
+
 consul:
   addr: 127.0.0.1:8500
 
@@ -12,18 +12,21 @@ order:
   server-to-run: http
   http-addr: 127.0.0.1:8282
   grpc-addr: 127.0.0.1:5002
+  metrics_export_addr: 127.0.0.1:9123
 
 stock:
   service-name: stock
   server-to-run: grpc
   http-addr: 127.0.0.1:8283
   grpc-addr: 127.0.0.1:5003
+  metrics_export_addr: 127.0.0.1:9124
 
 payment:
   service-name: payment
   server-to-run: http
   http-addr: 127.0.0.1:8284
   grpc-addr: 127.0.0.1:5004
+  metrics_export_addr: 127.0.0.1:9125
 
 kitchen:
   service-name: kitchen
@@ -53,6 +56,7 @@ redis:
     read_timeout: 1000
     write_timeout: 100
 
+
 mysql:
   user: root
   password: root
@@ -60,5 +64,6 @@ mysql:
   port: 3307
   dbname: "gorder_v2"
 
-stripe-key: "${STRIPE_KEY}" # 读不到 作为提示
+
+stripe-key: "${STRIPE_KEY}"
 endpoint-stripe-secret: "${ENDPOINT_STRIPE_SECRET}"

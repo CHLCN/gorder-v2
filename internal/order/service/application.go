@@ -13,6 +13,7 @@ import (
 	"github.com/CHLCN/gorder-v2/order/app"
 	"github.com/CHLCN/gorder-v2/order/app/command"
 	"github.com/CHLCN/gorder-v2/order/app/query"
+	"github.com/CHLCN/gorder-v2/order/infrastructure/mq"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -44,10 +45,14 @@ func newApplication(_ context.Context, stockGRPC query.StockService, ch *amqp.Ch
 	//orderRepo := adapters.NewMemoryOrderRepository()
 	mongoClient := newMongoClient()
 	orderRepo := adapters.NewOrderRepositoryMongo(mongoClient)
-	metricClient := metrics.TodoMetrics{}
+	metricClient := metrics.NewPrometheusMetricsClient(&metrics.PrometheusMetricsClientConfig{
+		Host:        viper.GetString("order.metrics_export_addr"),
+		ServiceName: viper.GetString("order.service-name"),
+	})
+	eventPublisher := mq.NewRabbitMQEventPublisher(ch)
 	return app.Application{
 		Commands: app.Commands{
-			CreateOrder: command.NewCreateOrderHandler(orderRepo, stockGRPC, ch, logrus.StandardLogger(), metricClient),
+			CreateOrder: command.NewCreateOrderHandler(orderRepo, stockGRPC, eventPublisher, logrus.StandardLogger(), metricClient),
 			UpdateOrder: command.NewUpdateOrderHandler(orderRepo, logrus.StandardLogger(), metricClient),
 		},
 		Queries: app.Queries{

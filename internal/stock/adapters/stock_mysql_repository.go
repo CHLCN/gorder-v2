@@ -43,10 +43,10 @@ func (m MySQLStockRepository) UpdateStock(
 	ctx context.Context,
 	data []*entity.ItemWithQuantity,
 	updateFn func(
-	ctx context.Context,
-	existing []*entity.ItemWithQuantity,
-	query []*entity.ItemWithQuantity,
-) ([]*entity.ItemWithQuantity, error),
+		ctx context.Context,
+		existing []*entity.ItemWithQuantity,
+		query []*entity.ItemWithQuantity,
+	) ([]*entity.ItemWithQuantity, error),
 ) error {
 	return m.db.StartTransaction(func(tx *gorm.DB) (err error) {
 		defer func() {
@@ -65,7 +65,7 @@ func (m MySQLStockRepository) updateOptimistic(
 	tx *gorm.DB,
 	data []*entity.ItemWithQuantity,
 	updateFn func(ctx context.Context, existing []*entity.ItemWithQuantity, query []*entity.ItemWithQuantity,
-) ([]*entity.ItemWithQuantity, error)) error {
+	) ([]*entity.ItemWithQuantity, error)) error {
 	for _, queryData := range data {
 		var newestRecord *persistent.StockModel
 		newestRecord, err := m.db.GetStockByID(ctx, builder.NewStock().ProductIDs(queryData.ID))
@@ -103,7 +103,7 @@ func (m MySQLStockRepository) updatePessimistic(
 	tx *gorm.DB,
 	data []*entity.ItemWithQuantity,
 	updateFn func(ctx context.Context, existing []*entity.ItemWithQuantity, query []*entity.ItemWithQuantity,
-) ([]*entity.ItemWithQuantity, error)) error {
+	) ([]*entity.ItemWithQuantity, error)) error {
 	var dest []persistent.StockModel
 	dest, err := m.db.BatchGetStockByID(ctx, builder.NewStock().ProductIDs(getIDFromEntities(data)...).ForUpdate())
 	if err != nil {
